@@ -24,8 +24,10 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name        = "${var.project_name}-public-subnet-${count.index + 1}"
-    Environment = var.environment
+    Name                                        = "${var.project_name}-public-subnet-${count.index + 1}"
+    Environment                                 = var.environment
+    "kubernetes.io/cluster/${var.project_name}" = "shared"
+    "kubernetes.io/role/elb"                    = "1"
   }
 }
 
@@ -39,8 +41,10 @@ resource "aws_subnet" "private" {
   availability_zone = count.index == 0 ? "us-east-2a" : "us-east-2b"
 
   tags = {
-    Name        = "${var.project_name}-private-subnet-${count.index + 1}"
-    Environment = var.environment
+    Name                                        = "${var.project_name}-private-subnet-${count.index + 1}"
+    Environment                                 = var.environment
+    "kubernetes.io/cluster/${var.project_name}" = "shared"
+    "kubernetes.io/role/internal-elb"           = "1"
   }
 }
 
@@ -123,4 +127,4 @@ resource "aws_route_table_association" "private" {
   count          = 2
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private.id
-} 
+}
