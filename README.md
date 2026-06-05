@@ -126,7 +126,24 @@ mkdir terraform && cd terraform
 touch provider.tf ecr.tf eks.tf variables.tf outputs.tf
 ```
 
-Step 3.2 - 
+Step 3.2 - Add the provider resource block to the provider.tf file
+```
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "6.49.0"
+    }
+  }
+}
+
+provider "aws" {
+  # Configuration options
+  region = var.region
+}
+```
+
+Step 3.3 - 
 
 ## Conclusion
 
