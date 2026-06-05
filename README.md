@@ -522,7 +522,7 @@ Step 3.9 - Apply the build. If there are errors, do your own troubleshooting
 ```
 terraform apply
 ```
-
+![Terraform Apply](./screenshots/apply.png)
 
 ## Conclusion
 
