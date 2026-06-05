@@ -54,9 +54,6 @@ Step 1.5 - Create a .gitignore file in the project root and add the following co
 node_modules
 .env
 npm-debug.log
-node_modules
-.env
-npm-debug.log
 .terraform/
 .terraform.lock.hcl
 *.tfstate
@@ -127,7 +124,7 @@ sudo docker run -d --name backend -p 3000:3000 backend-app
 ![Docker Verified](./screenshots/docker_verify.png)
 
 
-### Phase 3 - Push the Docker image to Elastic Container Registry (ECR)
+### Phase 3 - Provision Infrastructure with Terraform
 
 Step 3.1 - Create a Terraform directory in the project root
 ```
@@ -511,18 +508,30 @@ variable "instance_type" {
   default = "t3.small"
 }
 ```
-Step 3.8 - Within the terraform directory, initialize terraform
+Step 3.9 - Within the terraform directory, initialize terraform
 ```
 terraform init
 ```
 ![Terraform Init](./screenshots/init.png)
 
 
-Step 3.9 - Apply the build. If there are errors, do your own troubleshooting
+Step 3.10 - Apply the build. If there are errors, do your own troubleshooting
 ```
 terraform apply
 ```
 ![Terraform Apply](./screenshots/apply.png)
+
+### Phase 4 - Push Docker Image to ECR
+*To Be Completed*
+
+### Phase 5 - Deploy to EKS
+*To Be Completed*
+
+### Phase 6 - Set up Jenkins CI/CD Pipeline
+*To Be Completed*
+
+### Phase 7 - Set up GitOps with GitHub Actions and ArgoCD
+*To Be Completed*
 
 ## Conclusion
 
