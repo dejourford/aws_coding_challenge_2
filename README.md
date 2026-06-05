@@ -20,7 +20,7 @@ Deploy a web application using **Docker**, orchestrate it with **AWS EKS**, and 
 
 ## Procedure
 
-Phase 1 - Creating the Web Application
+### Phase 1 - Creating the Web Application
 
 Step 1.1 - Create a directory named 'backend' and navigate into it
 
@@ -83,7 +83,7 @@ Step 1.8 - Navigate to localhost:3000 in the web browser and you should see the 
 ![Web Browser](./screenshots/web_browser.png)
 
 
-Phase 2 - Containerize the application with Docker
+### Phase 2 - Containerize the application with Docker
 
 Step 2.1 - Install Docker
 
@@ -118,7 +118,7 @@ sudo docker run -d --name backend -p 3000:3000 backend-app
 ![Docker Verified](./screenshots/docker_verify.png)
 
 
-Phase 3 - Push the Docker image to Elastic Container Registry (ECR)
+### Phase 3 - Push the Docker image to Elastic Container Registry (ECR)
 
 Step 3.1 - Create a Terraform directory in the project root
 ```
