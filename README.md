@@ -123,7 +123,7 @@ sudo docker run -d --name backend -p 3000:3000 backend-app
 Step 3.1 - Create a Terraform directory in the project root
 ```
 mkdir terraform && cd terraform
-touch provider.tf ecr.tf eks.tf variables.tf outputs.tf vpc.tf
+touch provider.tf ecr.tf eks.tf variables.tf outputs.tf vpc.tf iam.tf
 ```
 
 Step 3.2 - Add the provider resource block to the provider.tf file
@@ -143,7 +143,377 @@ provider "aws" {
 }
 ```
 
-Step 3.3 - 
+Step 3.3 - Add the following code snippet to the vpc.tf file
+```
+#------------------------------------------------------------------
+# VPC
+#------------------------------------------------------------------
+resource "aws_vpc" "main" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name        = "${var.project_name}-vpc"
+    Environment = var.environment
+  }
+}
+
+#------------------------------------------------------------------
+# Public subnets
+#------------------------------------------------------------------
+resource "aws_subnet" "public" {
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index)
+  availability_zone = count.index == 0 ? "us-east-2a" : "us-east-2b"
+
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name                                        = "${var.project_name}-public-subnet-${count.index + 1}"
+    Environment                                 = var.environment
+    "kubernetes.io/cluster/${var.project_name}" = "shared"
+    "kubernetes.io/role/elb"                    = "1"
+  }
+}
+
+#------------------------------------------------------------------
+# Private subnets
+#------------------------------------------------------------------
+resource "aws_subnet" "private" {
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 2)
+  availability_zone = count.index == 0 ? "us-east-2a" : "us-east-2b"
+
+  tags = {
+    Name                                        = "${var.project_name}-private-subnet-${count.index + 1}"
+    Environment                                 = var.environment
+    "kubernetes.io/cluster/${var.project_name}" = "shared"
+    "kubernetes.io/role/internal-elb"           = "1"
+  }
+}
+
+#------------------------------------------------------------------
+# Internet Gateway
+#------------------------------------------------------------------
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name        = "${var.project_name}-igw"
+    Environment = var.environment
+  }
+}
+
+#------------------------------------------------------------------
+# NAT Gateway
+#------------------------------------------------------------------
+resource "aws_eip" "nat" {
+  domain = "vpc"
+  tags = {
+    Name        = "${var.project_name}-nat-eip"
+    Environment = var.environment
+  }
+}
+
+resource "aws_nat_gateway" "main" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
+
+  tags = {
+    Name        = "${var.project_name}-nat-gateway"
+    Environment = var.environment
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
+#------------------------------------------------------------------
+# Route Tables
+#------------------------------------------------------------------
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = {
+    Name        = "${var.project_name}-public-rt"
+    Environment = var.environment
+  }
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.main.id
+  }
+
+  tags = {
+    Name        = "${var.project_name}-private-rt"
+    Environment = var.environment
+  }
+}
+
+#------------------------------------------------------------------
+# Route Table Associations
+#------------------------------------------------------------------
+resource "aws_route_table_association" "public" {
+  count          = 2
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "private" {
+  count          = 2
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
+}
+
+```
+
+Step 3.4 - Add the following code snippet to the eks.tf file
+```
+#------------------------------------------------------------------
+# EKS NODE GROUP
+#------------------------------------------------------------------
+
+resource "aws_eks_node_group" "main" {
+  cluster_name    = aws_eks_cluster.example.name
+  node_group_name = "${var.project_name}-node-group"
+  node_role_arn   = aws_iam_role.node.arn
+  subnet_ids      = aws_subnet.private[*].id
+  instance_types  = [var.instance_type]
+
+  scaling_config {
+    desired_size = 1
+    min_size     = 1
+    max_size     = 4
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.node_AmazonEKSWorkerNodePolicy,
+    aws_iam_role_policy_attachment.node_AmazonEKS_CNI_Policy,
+    aws_iam_role_policy_attachment.node_AmazonEC2ContainerRegistryReadOnly,
+  ]
+
+  tags = {
+    Name        = "${var.project_name}-node-group"
+    Environment = var.environment
+  }
+}
+
+#------------------------------------------------------------------
+# EKS 
+#------------------------------------------------------------------
+resource "aws_eks_cluster" "example" {
+  name = var.project_name
+
+  access_config {
+    authentication_mode = "API"
+  }
+
+  role_arn = aws_iam_role.cluster.arn
+  version  = "1.35"
+
+  vpc_config {
+    subnet_ids = concat(
+      aws_subnet.private[*].id,
+      aws_subnet.public[*].id
+    )
+  }
+
+  # Ensure that IAM Role permissions are created before and deleted
+  # after EKS Cluster handling. Otherwise, EKS will not be able to
+  # properly delete EKS managed EC2 infrastructure such as Security Groups.
+  depends_on = [
+    aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy,
+  ]
+
+  tags = {
+    Name        = "${var.project_name}-eks-cluster"
+    Environment = var.environment
+  }
+}
+
+```
+
+Step 3.5 - Add the following code snippet to the iam.tf file
+```
+#------------------------------------------------------------------
+# IAM 
+#------------------------------------------------------------------
+resource "aws_iam_role" "cluster" {
+  name = "${var.project_name}-cluster-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "sts:AssumeRole",
+          "sts:TagSession"
+        ]
+        Effect = "Allow"
+        Principal = {
+          Service = "eks.amazonaws.com"
+        }
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSClusterPolicy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.cluster.name
+}
+
+#------------------------------------------------------------------
+# IAM Node Group Role
+#------------------------------------------------------------------
+resource "aws_iam_role" "node" {
+  name = "${var.project_name}-node-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "node_AmazonEKSWorkerNodePolicy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.node.name
+}
+
+resource "aws_iam_role_policy_attachment" "node_AmazonEKS_CNI_Policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.node.name
+}
+
+resource "aws_iam_role_policy_attachment" "node_AmazonEC2ContainerRegistryReadOnly" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.node.name
+}
+
+```
+
+Step 3.6 - Add the following code snippet to the ecr.tf file
+
+```
+#------------------------------------------------------------------
+# ECR Repositories
+#------------------------------------------------------------------
+resource "aws_ecr_repository" "backend" {
+  name                 = "${var.project_name}-backend"
+  image_tag_mutability = "MUTABLE"
+  force_delete = true
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name        = "${var.project_name}-backend-repo"
+    Environment = var.environment
+  }
+}
+
+#------------------------------------------------------------------
+# ECR Lifecycle Policy
+#------------------------------------------------------------------
+resource "aws_ecr_lifecycle_policy" "backend" {
+  repository = aws_ecr_repository.backend.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 5 images"
+        selection = {
+          tagStatus     = "tagged"
+          tagPrefixList = ["v"]
+          countType     = "imageCountMoreThan"
+          countNumber   = 5
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+} 
+```
+
+Step 3.7 - Add the following code snippet to the outputs.tf file
+```
+output "region" {
+  value = var.region
+}
+
+output "cluster_name" {
+  value = aws_eks_cluster.example.name
+}
+
+output "cluster_endpoint" {
+  value = aws_eks_cluster.example.endpoint
+}
+
+output "ecr_repository_url" {
+  value = aws_ecr_repository.backend.repository_url
+}
+```
+Step 3.8 - Add the following code snippet to the variables.tf file
+```
+variable "project_name" {
+  type = string
+  default = "aws_coding_challenge_2"
+}
+
+variable "environment" {
+  type = string
+  default = "dev"
+}
+
+variable "region" {
+  type = string
+  default = "us-east-2"
+}
+
+variable "vpc_cidr" {
+  type = string
+  default = "10.0.0.0/16"
+}
+
+variable "instance_type" {
+  type = string
+  default = "t3.small"
+}
+```
+Step 3.8 - Within the terraform directory, initialize terraform
+```
+terraform init
+```
+![Terraform Init](./screenshots/init.png)
+
+
+Step 3.9 - Apply the build. If there are errors, do your own troubleshooting
+```
+terraform apply
+```
+
 
 ## Conclusion
 
