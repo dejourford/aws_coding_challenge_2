@@ -49,11 +49,19 @@ node -v
 ls node_modules | grep express
 ```
 
-Step 1.5 - Create a .gitignore file in the project root and add node_modules to it
+Step 1.5 - Create a .gitignore file in the project root and add the following code snippet
 ```
 node_modules
 .env
 npm-debug.log
+node_modules
+.env
+npm-debug.log
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.pem
 ```
 
 Step 1.6 - Create index.js and write the web application
