@@ -61,6 +61,7 @@ npm-debug.log
 .terraform.lock.hcl
 *.tfstate
 *.tfstate.backup
+*.tfstate.lock.info
 *.pem
 ```
 
