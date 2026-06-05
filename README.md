@@ -123,7 +123,7 @@ sudo docker run -d --name backend -p 3000:3000 backend-app
 Step 3.1 - Create a Terraform directory in the project root
 ```
 mkdir terraform && cd terraform
-touch provider.tf ecr.tf eks.tf variables.tf outputs.tf
+touch provider.tf ecr.tf eks.tf variables.tf outputs.tf vpc.tf
 ```
 
 Step 3.2 - Add the provider resource block to the provider.tf file
