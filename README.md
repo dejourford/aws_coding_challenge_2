@@ -522,7 +522,19 @@ terraform apply
 ![Terraform Apply](./screenshots/apply.png)
 
 ### Phase 4 - Push Docker Image to ECR
-*To Be Completed*
+Step 4.1 - Authenticate Docker to ECR
+```
+aws ecr get-login-password --region <your-region> | docker login --username AWS --password-stdin <your-account-id>.dkr.ecr.<your-region>.amazonaws.com
+```
+Step 4.2 - Tag your docker image
+```
+docker tag backend-app:latest <your-account-id>.dkr.ecr.<your-region>.amazonaws.com/<your-ecr-repo-name>:latest
+```
+
+Step 4.3 - Push docker image to ECR
+```
+docker push <your-account-id>.dkr.ecr.<your-region>.amazonaws.com/<your-ecr-repo-name>:latest
+```
 
 ### Phase 5 - Deploy to EKS
 *To Be Completed*
