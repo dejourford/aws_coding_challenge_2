@@ -1,0 +1,25 @@
+image:
+  repository: 149465511648.dkr.ecr.us-east-2.amazonaws.com/aws_coding_challenge_2-backend
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 3000
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+hpa:
+  minReplicas: 1
+  maxReplicas: 3
+  cpuUtilization: 50
+  memoryUtilization: 50
