@@ -847,9 +847,6 @@ Step 6.17 - Click **Build Now** in Jenkins to start the initial build
 
 Step 6.18 - After a successful build, navigate to `http://<your-loadbalancer-external-ip>` to verify the application
 
-![Jenkins Build](./screenshots/jenkins_build.png)
-
-
 ### Phase 7 - Set up GitOps with GitHub Actions and ArgoCD
 
 Step 7.1 - Create the gitops branch, remove the Jenkinsfile, and create the workflow directory
