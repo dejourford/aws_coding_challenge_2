@@ -982,8 +982,6 @@ Step 7.12 - Navigate to `http://<your-loadbalancer-external-ip>` to confirm "Hel
 This project successfully demonstrated a full end-to-end DevOps workflow by deploying a containerized Node.js application to AWS EKS using industry-standard tools and practices. Starting from a simple "Hello, World!" Express application, the project covered containerization with Docker, infrastructure provisioning with Terraform, container orchestration with Kubernetes, and automated deployments through two separate CI/CD approaches — Jenkins on the main branch and a GitOps workflow using GitHub Actions and ArgoCD on the gitops branch. The application was made highly available and scalable through EKS node auto-scaling and Horizontal Pod Autoscaling based on CPU and memory utilization.
 
 ## Lessons Learned
-## Lessons Learned
-
 - **Kubernetes requires more configuration than ECS** — Unlike ECS with Fargate, EKS requires managing node groups, IAM roles, subnet tags, and kubectl access separately. The additional complexity comes with greater flexibility and control.
 - **Helm simplifies Kubernetes deployments** — Managing raw YAML manifests becomes difficult at scale. Helm charts allow you to template and reuse deployment configurations across environments.
 - **ArgoCD and Jenkins serve different purposes** — Jenkins handles the full CI/CD pipeline while ArgoCD focuses purely on the CD side using a GitOps approach. Both are valid and are often used together in production.
