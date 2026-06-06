@@ -768,6 +768,8 @@ output "jenkins_url" {
 }
 ```
 
+Step 6.4 - 
+
 
 ### Phase 7 - Set up GitOps with GitHub Actions and ArgoCD
 *To Be Completed*
