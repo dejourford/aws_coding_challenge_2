@@ -643,7 +643,7 @@ kubectl get services
 kubectl get hpa
 ```
 
-Step 5.5 - Navigate to http://<your-loadbalancer-external-ip>
+Step 5.5 - Navigate to http://<your-loadbalancer-external-ip> to see the "Hello World!" text displayed
 
 ### Phase 6 - Set up Jenkins CI/CD Pipeline
 *To Be Completed*
