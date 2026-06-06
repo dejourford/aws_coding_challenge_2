@@ -537,7 +537,113 @@ docker push <your-account-id>.dkr.ecr.<your-region>.amazonaws.com/<your-ecr-repo
 ```
 
 ### Phase 5 - Deploy to EKS
-*To Be Completed*
+Step 5.1 - Configure kubectl to connect to EKS cluster
+```
+aws eks update-kubeconfig --region <your-region> --name <your-project-name>
+```
+
+Step 5.2 - Verify the nodes are ready
+```
+kubectl get nodes
+```
+
+Step 5.2 - Create Kubernetes (K8s) directory and files
+```
+mkdir k8s
+touch k8s/deployment.yaml k8s/service.yaml k8s/hpa.yaml
+```
+
+Deployment.yaml
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: 149465511648.dkr.ecr.us-east-2.amazonaws.com/aws_coding_challenge_2-backend:latest
+          ports:
+            - containerPort: 3000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+```
+
+Service.yaml
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: LoadBalancer
+```
+
+hpa.yaml
+```
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 50
+```
+
+Step 5.3 - Apply manifests to the cluster
+```
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+kubectl apply -f k8s/hpa.yaml
+```
+
+Step 5.4 - Verify everything is running
+```
+kubectl get pods
+kubectl get services
+kubectl get hpa
+```
+
+Step 5.5 - Navigate to http://<your-loadbalancer-external-ip>
 
 ### Phase 6 - Set up Jenkins CI/CD Pipeline
 *To Be Completed*
