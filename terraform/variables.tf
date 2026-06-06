@@ -25,5 +25,5 @@ variable "instance_type" {
 
 variable "key_name" {
   type    = string
-  default = "jenkins-server"
+  default = "1PU"
 }
