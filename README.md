@@ -3,6 +3,28 @@
 ## Objective
 Deploy a web application using **Docker**, orchestrate it with **AWS EKS**, and set up a **continuous deployment pipeline** using **Jenkins**.
 
+## Prerequisites
+
+Before getting started, ensure you have the following installed and configured:
+
+- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) — configured with `aws configure`
+- [Terraform](https://developer.hashicorp.com/terraform/install) — v1.0+
+- [Docker](https://docs.docker.com/get-docker/)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- [Helm](https://helm.sh/docs/intro/install/)
+- [Node.js & npm](https://nodejs.org/)
+- An AWS account with appropriate IAM permissions
+- A GitHub account with a personal access token
+
+## Getting Started
+
+Clone the repository and navigate into it:
+
+```
+git clone https://github.com/<your-username>/<your-repo-name>.git
+cd <your-repo-name>
+```
+
 ## Tools Used
 - **Node.js / Express** — simple web application serving "Hello, World!"
 - **Docker** — containerizing the application and its dependencies
