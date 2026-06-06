@@ -768,8 +768,182 @@ output "jenkins_url" {
 }
 ```
 
-Step 6.4 - 
+Step 6.4 - Run Terraform apply to provision the Jenkins EC2 instance
+```
+terraform apply
+```
+Step 6.5 - Navigate to the Jenkins url http://<Jenkins Server IP>:8080
+```
 
+Step 6.6 - SSH into the Jenkins EC2 instance to get the default admin password to login
+```
+ssh -i ~/.ssh/1PU.pem ec2-user@3.133.222.11
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+``` 
+
+Step 6.7 - Install the following plugins
+  - Docker
+  - Amazon EC2
+  - Amazon Elastic Container Service (ECS) / Fargate
+  - Kubernetes
+  - Kubernetes CLI
+
+Step 6.8 - Add credentials by navigating to: Manage Jenkins --> Credentials --> System --> Global --> Add Credentials
+  - GitHub PAT
+  - AWS Credentials
+
+Step 6.9 - Install AWS CLI on the Jenkins EC2
+```
+sudo dnf install awscli -y
+```
+
+Step 6.10 - Install kubectl on the Jenkins EC2
+```
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
+kubectl version --client
+```
+
+Step 6.11 - Setup up AWS configuration
+```
+aws configure
+```
+
+Step 6.12 - Configure kubectl on the Jenkins EC2 to connect your EKS cluster
+```
+aws eks update-kubeconfig --region us-east-2 --name aws_coding_challenge_2
+```
+
+Step 6.13 - Install Helm on the Jenkins EC2
+```
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+```
+
+Step 6.14 - Create a Jenkinsfile in the project root directory
+```
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION      = 'us-east-2'
+        ECR_REPO        = '149465511648.dkr.ecr.us-east-2.amazonaws.com/aws_coding_challenge_2-backend'
+        CLUSTER_NAME    = 'aws_coding_challenge_2'
+        IMAGE_TAG       = "${BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Checkout code') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Docker image') {
+            steps {
+                script {
+                    sh 'docker build -t backend-app:${IMAGE_TAG} ./backend'
+                }
+            }
+        }
+
+        stage('Authenticate to ECR') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws_keys']]) {
+                    script {
+                        sh '''
+                            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Tag and Push image to ECR') {
+            steps {
+                script {
+                    sh '''
+                        docker tag backend-app:${IMAGE_TAG} $ECR_REPO:${IMAGE_TAG}
+                        docker tag backend-app:${IMAGE_TAG} $ECR_REPO:latest
+                        docker push $ECR_REPO:${IMAGE_TAG}
+                        docker push $ECR_REPO:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to EKS with Helm') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws_keys']]) {
+                    script {
+                        sh '''
+                            aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
+                            helm upgrade --install backend ./helm/backend \
+                                --set image.repository=$ECR_REPO \
+                                --set image.tag=${IMAGE_TAG}
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
+```
+
+Step 6.15 - Create a helm chart and structure
+```
+mkdir -p helm/backend/templates
+touch helm/backend/Chart.yaml
+touch helm/backend/values.yaml
+touch helm/backend/templates/deployment.yaml
+touch helm/backend/templates/service.yaml
+touch helm/backend/templates/hpa.yaml
+```
+
+Chart.yaml
+```
+apiVersion: v2
+name: backend
+description: A Helm chart for the backend application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+```
+
+Values.yaml
+```
+image:
+  repository: 149465511648.dkr.ecr.us-east-2.amazonaws.com/aws_coding_challenge_2-backend
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 3000
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+hpa:
+  minReplicas: 1
+  maxReplicas: 3
+  cpuUtilization: 50
+  memoryUtilization: 50
+```
 
 ### Phase 7 - Set up GitOps with GitHub Actions and ArgoCD
 *To Be Completed*
