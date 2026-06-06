@@ -1046,7 +1046,83 @@ Step 6.18 - After a successful build, navigate to http://aa0bcfde5138846b18e2e92
 
 
 ### Phase 7 - Set up GitOps with GitHub Actions and ArgoCD
-*To Be Completed*
+
+Step 7.1 - Create gitops branch, remove the Jenkinsfile, and create deploy.yml file in .github/workflows directory
+```
+git checkout -b gitops
+mkdir -p .github/workflows
+touch .github/workflows/deploy.yml
+```
+
+deploy.yml
+```
+name: Deploy to EKS
+
+on:
+  push:
+    branches:
+      - gitops
+
+env:
+  AWS_REGION:   us-east-2
+  ECR_REPO:     149465511648.dkr.ecr.us-east-2.amazonaws.com/aws_coding_challenge_2-backend
+  CLUSTER_NAME: aws_coding_challenge_2
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::149465511648:role/<your-oidc-role-name>
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to ECR
+        run: |
+          docker build -t $ECR_REPO:latest ./backend
+          docker push $ECR_REPO:latest
+```
+
+Step 7.2 - Setup ODIC role in AWS
+- IAM → Identity providers → Add provider
+- Provider URL: https://token.actions.githubusercontent.com
+- Audience: sts.amazonaws.com
+- Create IAM role with AmazonEC2ContainerRegistryPowerUser policy
+- Replace <your-oidc-role-name> with the role name you create
+
+Step 7.3 - Create IAM role
+
+- Go to IAM → Roles → Create role
+- Trusted entity type: Web identity
+- Identity provider: token.actions.githubusercontent.com
+- Audience: sts.amazonaws.com
+- GitHub organization: your GitHub username
+- GitHub repository: aws_coding_challenge_2
+- GitHub branch: gitops
+- Click Next
+- Attach policies:
+
+  - AmazonEC2ContainerRegistryPowerUser
+  - AmazonEKSClusterPolicy
+  - AmazonEKSWorkerNodePolicy
+
+
+- Click Next
+- Name the role (e.g. github-actions-role)
+- Click Create role
 
 ## Conclusion
 

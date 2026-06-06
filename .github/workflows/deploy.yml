@@ -1,0 +1,38 @@
+name: Deploy to EKS
+
+on:
+  push:
+    branches:
+      - gitops
+
+env:
+  AWS_REGION:   us-east-2
+  ECR_REPO:     149465511648.dkr.ecr.us-east-2.amazonaws.com/aws_coding_challenge_2-backend
+  CLUSTER_NAME: aws_coding_challenge_2
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::149465511648:role/github-actions-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to ECR
+        run: |
+          docker build -t $ECR_REPO:latest ./backend
+          docker push $ECR_REPO:latest
