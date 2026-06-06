@@ -1022,6 +1022,29 @@ spec:
           averageUtilization: {{ .Values.hpa.memoryUtilization }}
 ```
 
+Step 6.15 - Setup the Jenkins Pipeline
+- Jenkins home → New Item → name it → Pipeline → OK
+- Under Triggers → select GitHub hook trigger for GITScm polling
+- Under Pipeline → Definition = Pipeline from SCM → SCM = Git
+- Enter your repo URL and select your GitHub PAT credentials
+- Branch: */main
+- Save
+
+Step 6.16 - Setup GitHub Webhook
+- Go to your GitHub repo
+- Click Settings
+- Click Webhooks in the left sidebar
+- Click Add webhook
+- Payload URL: http://3.133.222.11:8080/github-webhook/
+- Content Type: application/json
+- Click Add webhook
+
+Step 6.17 - Click 'Build Now' in Jenkins to start the initial build
+
+Step 6.18 - After a successful build, navigate to http://aa0bcfde5138846b18e2e92695ca3154-1845123245.us-east-2.elb.amazonaws.com
+
+
+
 ### Phase 7 - Set up GitOps with GitHub Actions and ArgoCD
 *To Be Completed*
 
