@@ -13,3 +13,7 @@ output "cluster_endpoint" {
 output "ecr_repository_url" {
   value = aws_ecr_repository.backend.repository_url
 }
+
+output "jenkins_url" {
+  value = "http://${aws_eip.jenkins.public_ip}:8080"
+}
